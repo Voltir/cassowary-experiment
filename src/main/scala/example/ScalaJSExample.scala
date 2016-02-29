@@ -1,26 +1,17 @@
 package example
 
+import example.Cassowary._
 import example.c.Variable
 import rx._
 import scala.scalajs.js.annotation.JSExport
 import org.scalajs.dom
 import scalatags.JsDom.all._
 import framework.Framework._
-
+import c.implicits._
 
 
 @JSExport
 object ScalaJSExample {
-
-  implicit class WurtInt(val num: Int) extends AnyVal {
-    def asArg: c.VariableArgs =
-      scalajs.js.Dynamic.literal(value=num).asInstanceOf[c.VariableArgs]
-  }
-
-  implicit class WurtDouble(val num: Double) extends AnyVal {
-    def asArg: c.VariableArgs =
-      scalajs.js.Dynamic.literal(value=num).asInstanceOf[c.VariableArgs]
-  }
 
   lazy val innerHeight = Var(dom.window.innerHeight)
 
@@ -50,7 +41,21 @@ object ScalaJSExample {
     transform := Rx { s"translate(${cx()}px, ${cy()}px)" }
   }
 
-  def aBox()(implicit ctx: Ctx.Owner): HtmlTag = div(width:=50.px,height:=50.px,backgroundColor:="Red", lolcenter())
+  def aBox()(implicit ctx: Ctx.Owner): HtmlTag = div(
+    width:=50.px,
+    height:=50.px,
+    display.`inline-block`,
+    backgroundColor:="Red",
+    lolcenter()
+  )
+
+  def anotherBox(centerX: Var[Double], centerY: Var[Double], aColor: String)(implicit ctx: Ctx.Owner) = div(
+    width:=50.px,
+    height:=50.px,
+    backgroundColor:=aColor,
+    display.`inline-block`,
+    transform := Rx { s"translate(${centerX()}px, ${centerY()}px)" }
+  )
 
   @JSExport
   def main(content: dom.html.Div): Unit = {
@@ -99,6 +104,7 @@ object ScalaJSExample {
 //    println(x2.value)
 //    println(width)
 
+    //Attempt 1
     val solver = new c.SimplexSolver()
 
     val boxCx = new Variable(0.asArg)
@@ -127,5 +133,27 @@ object ScalaJSExample {
         .resolve()
       Var.set(cx -> boxCx.value, cy -> boxCy.value)
     }
+
+
+    //Attempt 2
+    val windowW = Var(dom.window.innerWidth.toDouble)
+    val windowH = Var(dom.window.innerHeight.toDouble)
+    val box2Cx = Var(0.0)
+    val box2Cy = Var(0.0)
+
+    val rxSolve = new Solver
+
+    throttle("resize") { (e: dom.Event) =>
+      Var.set(
+        windowW->dom.window.innerWidth.toDouble,
+        windowH->dom.window.innerHeight.toDouble
+      )
+    }
+
+    rxSolve.addConstraint(box2Cx === windowW / 4.0)
+    rxSolve.addConstraint(box2Cy === windowH / 2.0)
+
+    content.appendChild(anotherBox(box2Cx,box2Cy,"blue").render)
+
   }
 }
